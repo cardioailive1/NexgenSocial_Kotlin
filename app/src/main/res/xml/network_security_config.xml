@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cleartext is disabled app-wide (usesCleartextTraffic="false"), so this
+     only exists to allow localhost during development against a local
+     backend. Remove the debug-overrides block for a release build if you
+     never test against a local server. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>
