@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "146888554748",
+    "project_id": "nexgen-social",
+    "storage_bucket": "nexgen-social.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:146888554748:android:fe5771bb09f25dd89b7f79",
+        "android_client_info": {
+          "package_name": "com.corverxis.nexgensocial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDY6B63J1couRdzRKEQKUAuF8kn_rgSR0Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
