@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.corverxis.nexgensocial.ui.theme.Navy900
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.*
@@ -68,9 +69,17 @@ fun MainScaffold(
             // The call screen is full-bleed; a nav bar under it looks wrong
             // and invites tapping away mid-call.
             if (currentDestination?.route?.startsWith("call/") != true) {
-                NavigationBar {
+                // windowInsets is set explicitly and labels are always shown:
+                // by default Material3 hides the label of unselected items,
+                // which makes item widths differ and produces the uneven
+                // spacing the design review flagged (UAT-015).
+                NavigationBar(
+                    containerColor = Navy900,
+                    tonalElevation = 0.dp,
+                ) {
                     tabs.forEach { tab ->
                         NavigationBarItem(
+                            alwaysShowLabel = true,
                             selected = currentDestination?.hierarchy?.any { it.route == tab.route } == true,
                             onClick = {
                                 navController.navigate(tab.route) {
@@ -92,7 +101,12 @@ fun MainScaffold(
             startDestination = "feed",
             modifier = Modifier.padding(padding),
         ) {
-            composable("feed") { FeedScreen() }
+            composable("feed") {
+                FeedScreen(
+                    onOpenProfile = { username -> navController.navigate("user/$username") },
+                    onOpenComments = { postId -> navController.navigate("comments/$postId") },
+                )
+            }
             composable("reels") { ReelsScreen() }
             composable("explore") { ExploreScreen() }
             composable("messages") { MessagesScreen(navController) }
@@ -100,6 +114,18 @@ fun MainScaffold(
             composable("conversation/{id}") { entry ->
                 ConversationScreen(
                     conversationId = entry.arguments?.getString("id").orEmpty(),
+                    navController = navController,
+                )
+            }
+            composable("comments/{postId}") { entry ->
+                CommentsScreen(
+                    postId = entry.arguments?.getString("postId").orEmpty(),
+                    navController = navController,
+                )
+            }
+            composable("user/{username}") { entry ->
+                UserProfileScreen(
+                    username = entry.arguments?.getString("username").orEmpty(),
                     navController = navController,
                 )
             }

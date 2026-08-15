@@ -1,12 +1,16 @@
 package com.corverxis.nexgensocial.ui.screens
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material3.*
@@ -14,6 +18,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,7 +92,11 @@ class FeedViewModel : ViewModel() {
 }
 
 @Composable
-fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
+fun FeedScreen(
+    viewModel: FeedViewModel = viewModel(),
+    onOpenProfile: (String) -> Unit = {},
+    onOpenComments: (String) -> Unit = {},
+) {
     val posts by viewModel.posts.collectAsState()
     val error by viewModel.error.collectAsState()
 
@@ -101,7 +113,12 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
             }
         }
         items(posts, key = { it.id }) { post ->
-            PostCard(post) { viewModel.toggleLike(post) }
+            PostCard(
+                post = post,
+                onLike = { viewModel.toggleLike(post) },
+                onOpenProfile = onOpenProfile,
+                onOpenComments = { onOpenComments(it.id) },
+            )
         }
         if (posts.isEmpty()) {
             item {
@@ -121,11 +138,26 @@ fun FeedScreen(viewModel: FeedViewModel = viewModel()) {
 }
 
 @Composable
-fun PostCard(post: Post, onLike: () -> Unit) {
+fun PostCard(
+    post: Post,
+    onLike: () -> Unit,
+    onOpenProfile: (String) -> Unit = {},
+    onOpenComments: (Post) -> Unit = {},
+) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // The whole author row is the tap target, not just the avatar --
+            // a 38dp circle is below the 48dp minimum touch size and is
+            // easy to miss.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .clickable(enabled = post.author != null) {
+                        post.author?.username?.let(onOpenProfile)
+                    }
+                    .padding(vertical = 2.dp),
+            ) {
                 Avatar(post.author?.avatarUrl, post.author?.username ?: "?", 38.dp)
                 Column {
                     Text(post.author?.displayName ?: "Unknown",
@@ -160,9 +192,15 @@ fun PostCard(post: Post, onLike: () -> Unit) {
                     }
                     Text("${post.likeCount}", fontSize = 13.sp, color = Slate400)
                 }
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = null,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    modifier = Modifier
+                        .clip(MaterialTheme.shapes.small)
+                        .clickable { onOpenComments(post) }
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                ) {
+                    Icon(Icons.Outlined.ChatBubbleOutline, contentDescription = "Comments",
                         tint = Slate400, modifier = Modifier.size(18.dp))
                     Text("${post.commentCount}", fontSize = 13.sp, color = Slate400)
                 }
@@ -174,12 +212,27 @@ fun PostCard(post: Post, onLike: () -> Unit) {
 @Composable
 fun MediaCarousel(items: List<MediaItem>) {
     val pagerState = rememberPagerState(pageCount = { items.size })
+    var fullScreenItem by remember { mutableStateOf<MediaItem?>(null) }
+
+    fullScreenItem?.let { item ->
+        ZoomableImageDialog(item = item, onDismiss = { fullScreenItem = null })
+    }
 
     Column {
-        HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth().height(300.dp)) { page ->
+        // heightIn(max=) rather than a fixed height: a fixed box forces
+        // ContentScale.Fit to pad portrait media with large black bars.
+        // Capping the height instead lets each item size to its own aspect
+        // ratio, so there's nothing to pad.
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp),
+        ) { page ->
             val item = items[page]
             if (item.isVideo) {
-                VideoPlayer(url = ApiClient.mediaUrl(item.url), modifier = Modifier.fillMaxSize())
+                VideoPlayer(
+                    url = ApiClient.mediaUrl(item.url),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 460.dp),
+                )
             } else {
                 AsyncImage(
                     model = ApiClient.mediaUrl(item.url),
@@ -187,7 +240,11 @@ fun MediaCarousel(items: List<MediaItem>) {
                     // Fit, not Crop: cropping a portrait photo into a
                     // landscape box hides part of the picture.
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize().clip(MaterialTheme.shapes.medium),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentHeight()
+                        .clip(MaterialTheme.shapes.medium)
+                        .clickable { fullScreenItem = item },
                 )
             }
         }
@@ -234,6 +291,72 @@ fun Avatar(url: String?, seed: String, size: androidx.compose.ui.unit.Dp) {
             Surface(color = Navy800, modifier = Modifier.fillMaxSize(),
                 shape = androidx.compose.foundation.shape.CircleShape) {}
             Text(seed.take(1).uppercase(), color = Cyan300, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+
+/**
+ * Full-screen image viewer with pinch-to-zoom and pan (UAT-012).
+ *
+ * Scale is clamped to 1x–5x: below 1x the image would float away from the
+ * frame, and above 5x an ordinary photo is just blur. Panning is only
+ * allowed while zoomed in, so a stray drag at 1x doesn't shift the picture
+ * off-centre.
+ */
+@Composable
+fun ZoomableImageDialog(item: MediaItem, onDismiss: () -> Unit) {
+    var scale by remember { mutableStateOf(1f) }
+    var offsetX by remember { mutableStateOf(0f) }
+    var offsetY by remember { mutableStateOf(0f) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(androidx.compose.ui.graphics.Color.Black)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(1f, 5f)
+                        if (scale > 1f) {
+                            offsetX += pan.x
+                            offsetY += pan.y
+                        } else {
+                            // Snap back to centre when zoomed all the way out.
+                            offsetX = 0f
+                            offsetY = 0f
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = ApiClient.mediaUrl(item.url),
+                contentDescription = item.caption,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offsetX,
+                        translationY = offsetY,
+                    ),
+            )
+
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+            ) {
+                Icon(
+                    Icons.Filled.Close,
+                    contentDescription = "Close",
+                    tint = androidx.compose.ui.graphics.Color.White,
+                )
+            }
         }
     }
 }

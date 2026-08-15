@@ -1,0 +1,38 @@
+{
+  "_README": [
+    "THIS IS A TEMPLATE, NOT A WORKING FILE. The app will not build with it.",
+    "",
+    "Do NOT try to fill this in by hand. Download the real file instead:",
+    "  console.firebase.google.com -> your project -> Project settings",
+    "  -> Your apps -> Android -> google-services.json",
+    "",
+    "Then save it as app/google-services.json (drop the .example).",
+    "",
+    "The package_name below must match applicationId in build.gradle.kts",
+    "exactly. A mismatch builds fine and then silently never delivers a",
+    "single notification, which is a miserable thing to debug."
+  ],
+  "project_info": {
+    "project_number": "REPLACE_WITH_YOUR_PROJECT_NUMBER",
+    "project_id": "REPLACE_WITH_YOUR_PROJECT_ID",
+    "storage_bucket": "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REPLACE_WITH_YOUR_APP_ID",
+        "android_client_info": {
+          "package_name": "com.corverxis.nexgensocial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        { "current_key": "REPLACE_WITH_YOUR_API_KEY" }
+      ],
+      "services": {
+        "appinvite_service": { "other_platform_oauth_client": [] }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

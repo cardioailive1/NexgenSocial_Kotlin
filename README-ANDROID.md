@@ -57,9 +57,19 @@ screen yet. The upload path (`ApiClient.upload`) is written and correct.
 
 1. **Android Studio Hedgehog or newer**, JDK 17.
 2. Open the project; let Gradle sync.
-3. **Firebase**: create a project at console.firebase.google.com, add an
-   Android app with package `com.corverxis.nexgensocial`, download
-   `google-services.json` into `app/`. The build will fail without it.
+3. **Firebase** (required for push and calls):
+   - Go to console.firebase.google.com, create or open a project
+   - **Add app → Android**
+   - Package name must be **exactly** `com.corverxis.nexgensocial` — a
+     mismatch here builds fine and then silently never delivers a single
+     notification
+   - Download `google-services.json` into **`app/`** (beside
+     `build.gradle.kts`, not inside `app/src/`)
+
+   The project now builds *without* this file — you'll just get a Gradle
+   warning and no push. See `app/google-services.json.example` for the
+   expected shape, though downloading the real file is easier than filling
+   the template in by hand.
 4. Add launcher icons (`res/mipmap-*`) and the two notification icons
    referenced in code: `ic_call`, `ic_call_end`, `ic_message` in
    `res/drawable/`.

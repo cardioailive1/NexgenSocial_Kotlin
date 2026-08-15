@@ -2,7 +2,38 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.serialization")
-    id("com.google.gms.google-services")
+}
+
+// The Google Services plugin fails the build outright when
+// google-services.json is absent, with an error that doesn't explain what to
+// do about it. Applying it only when the file exists means the project builds
+// without Firebase configured -- useful for a first run -- and prints a
+// warning that says exactly what's missing and how to fix it.
+val googleServicesFile = file("google-services.json")
+if (googleServicesFile.exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn(
+        """
+        |
+        |  ============================================================
+        |  google-services.json not found in app/
+        |
+        |  The app WILL build, but push notifications and incoming
+        |  calls will not work until you add it:
+        |
+        |    1. console.firebase.google.com -> create or open a project
+        |    2. Add app -> Android
+        |    3. Package name must be exactly:
+        |         com.corverxis.nexgensocial
+        |    4. Download google-services.json into the app/ folder
+        |       (next to build.gradle.kts, NOT inside app/src/)
+        |
+        |  See app/google-services.json.example for the expected shape.
+        |  ============================================================
+        |
+        """.trimMargin()
+    )
 }
 
 android {
@@ -56,6 +87,9 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
+    // Provides Task.await(), used to get the FCM token as a suspend call.
+    // Without this, `import kotlinx.coroutines.tasks.await` fails to resolve.
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
     // Media
     implementation("androidx.media3:media3-exoplayer:1.2.1")
@@ -65,9 +99,17 @@ dependencies {
     // Encrypted token storage -- see TokenStore for why not plain prefs
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    // Push
-    implementation(platform("com.google.firebase:firebase-bom:32.7.1"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
+    // Push. The BOM pins compatible versions across all Firebase libraries,
+    // so individual Firebase dependencies below deliberately carry no
+    // version number -- the BOM decides.
+    implementation(platform("com.google.firebase:firebase-bom:34.17.0"))
+    implementation("com.google.firebase:firebase-messaging")
+
+    // firebase-analytics is Firebase's default suggestion but is NOT
+    // required for push. Left out on purpose: adding it means declaring
+    // analytics collection in the Play Data Safety form, and this app
+    // doesn't otherwise gather usage analytics. Uncomment if you want it.
+    // implementation("com.google.firebase:firebase-analytics")
 
     // WebRTC for calls. See README-ANDROID.md -- the signalling is written,
     // the peer connection is not.
